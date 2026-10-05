@@ -7,3 +7,9 @@ torchvision==0.19.1
 opencv-python-headless==4.10.0.84
 numpy==1.26.4
 Pillow==10.4.0
+requests==2.32.3
+
+# Optional: enables POST /api/similarity. Without it, the endpoint stays up
+# and honestly reports {"available": false, ...} instead of erroring.
+# Install separately if you want similarity search:
+#   pip install faiss-cpu==1.8.0.post1
