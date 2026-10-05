@@ -60,15 +60,21 @@
                 <img id="imagePreview" alt="Selected lesion preview" hidden />
               </label>
 
-              <button type="button" class="secondary-button" id="cameraButton">
-                📷 <span data-i18n="takePhoto">Take a photo</span>
-              </button>
+              <div class="intake-actions">
+                <button type="button" class="secondary-button" id="cameraButton">
+                  📷 <span data-i18n="takePhoto">Take a photo</span>
+                </button>
+                <button type="button" class="secondary-button" id="existingPhotoButton">
+                  🖼️ <span data-i18n="choosePhoto">Choose existing photo</span>
+                </button>
+              </div>
             </div>
 
             <label class="toggle-row">
               <input type="checkbox" id="dataSaverToggle" />
               <span data-i18n="dataSaver">Data Saver Mode</span>
             </label>
+            <p class="upload-status" id="uploadStatus" aria-live="polite" data-i18n="uploadStatus">You can also drag a photo here or paste an image with Ctrl+V.</p>
             <p class="size-readout" id="sizeReadout" hidden></p>
           </fieldset>
 
@@ -290,6 +296,7 @@
         <button type="button" class="secondary-button" id="cameraCaptureBtn" data-i18n="capture">Capture</button>
         <button type="button" class="secondary-button" id="cameraRetakeBtn" hidden data-i18n="retake">Retake</button>
         <button type="button" class="run-button" id="cameraUseBtn" hidden data-i18n="usePhoto">Use photo</button>
+        <button type="button" class="secondary-button" id="cameraFallbackBtn" data-i18n="choosePhoto">Choose existing photo</button>
         <button type="button" class="secondary-button" id="cameraCancelBtn" data-i18n="cancel">Cancel</button>
       </div>
     </div>

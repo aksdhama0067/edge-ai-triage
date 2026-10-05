@@ -17,8 +17,8 @@ let lastTriageContext = null; // small summary sent to the assistant for context
 const el = (id) => document.getElementById(id);
 
 const ids = [
-  "lesionImage", "uploadPrompt", "imagePreview", "cameraButton",
-  "dataSaverToggle", "sizeReadout",
+  "lesionImage", "uploadPrompt", "imagePreview", "cameraButton", "existingPhotoButton",
+  "uploadDrop", "uploadStatus", "dataSaverToggle", "sizeReadout",
   "cough", "coughDaysRow", "coughDays", "fever", "breathingDifficulty", "chestIndrawing",
   "recentChange", "sizeChange", "appearanceChange", "painful", "itchy", "bleeding", "durationDays",
   "triageForm", "runButton",
@@ -33,7 +33,7 @@ const ids = [
   "assistantChips", "assistantForm", "assistantInput", "assistantAnswer", "assistantAnswerText", "assistantProviderNote",
   "privacyButton", "privacyOverlay", "closePrivacy", "resetButton",
   "cameraOverlay", "cameraVideo", "cameraCanvas", "cameraCaptured", "cameraError",
-  "cameraCaptureBtn", "cameraRetakeBtn", "cameraUseBtn", "cameraCancelBtn",
+  "cameraCaptureBtn", "cameraRetakeBtn", "cameraUseBtn", "cameraFallbackBtn", "cameraCancelBtn",
   "connDot", "connLabel", "langToggle",
 ];
 const E = {};
@@ -139,10 +139,48 @@ async function setCurrentImage(blob) {
   setPreview(processed);
 }
 
+async function useExistingImage(file, source = "file") {
+  if (!file || !file.type || !file.type.startsWith("image/")) {
+    alert(t("invalidImageFile"));
+    return;
+  }
+  await setCurrentImage(file);
+  E.uploadStatus.textContent = source === "paste" ? t("pastedPhoto") : t("photoSelected");
+}
+
 E.lesionImage.addEventListener("change", async () => {
   const file = E.lesionImage.files && E.lesionImage.files[0];
   if (!file) return;
-  await setCurrentImage(file);
+  await useExistingImage(file);
+});
+
+E.existingPhotoButton.addEventListener("click", () => E.lesionImage.click());
+
+// Drag-and-drop fallback for desktop browsers.
+["dragenter", "dragover"].forEach((eventName) => {
+  E.uploadDrop.addEventListener(eventName, (event) => {
+    event.preventDefault();
+    E.uploadDrop.classList.add("drag-active");
+  });
+});
+["dragleave", "drop"].forEach((eventName) => {
+  E.uploadDrop.addEventListener(eventName, (event) => {
+    event.preventDefault();
+    E.uploadDrop.classList.remove("drag-active");
+  });
+});
+E.uploadDrop.addEventListener("drop", async (event) => {
+  const file = event.dataTransfer?.files?.[0];
+  if (file) await useExistingImage(file, "drop");
+});
+
+// Paste a copied screenshot/photo directly into the app.
+document.addEventListener("paste", async (event) => {
+  const items = Array.from(event.clipboardData?.items || []);
+  const imageItem = items.find((item) => item.type.startsWith("image/"));
+  if (!imageItem) return;
+  const file = imageItem.getAsFile();
+  if (file) await useExistingImage(file, "paste");
 });
 
 E.dataSaverToggle.addEventListener("change", async () => {
@@ -204,6 +242,10 @@ function closeCamera() {
 
 E.cameraButton.addEventListener("click", openCamera);
 E.cameraCancelBtn.addEventListener("click", closeCamera);
+E.cameraFallbackBtn.addEventListener("click", () => {
+  closeCamera();
+  E.lesionImage.click();
+});
 
 E.cameraCaptureBtn.addEventListener("click", () => {
   const video = E.cameraVideo;
@@ -558,6 +600,7 @@ function resetAnalysis() {
   E.imagePreview.hidden = true;
   E.imagePreview.src = "";
   E.uploadPrompt.hidden = false;
+  E.uploadStatus.textContent = t("uploadStatus");
   E.sizeReadout.hidden = true;
   E.resultsDashboard.hidden = true;
   E.explainResult.hidden = true;

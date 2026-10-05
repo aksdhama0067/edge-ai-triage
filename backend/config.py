@@ -87,5 +87,5 @@ CORS_ORIGINS = [o.strip() for o in os.environ.get("TRIAGE_CORS_ORIGINS", _defaul
 # Misc
 # ---------------------------------------------------------------------------
 
-APP_VERSION = "0.2.1"
+APP_VERSION = "0.2.2"
 DISABLE_GRADCAM = _env_bool("TRIAGE_DISABLE_GRADCAM", False)

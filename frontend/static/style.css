@@ -243,7 +243,24 @@ body {
   position: relative;
 }
 
-.upload-drop:hover { border-color: var(--teal); }
+.upload-drop:hover, .upload-drop.drag-active { border-color: var(--teal); }
+
+.intake-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.upload-status {
+  margin: 8px 0 0;
+  font-size: 0.82rem;
+  color: #66756f;
+  text-align: center;
+}
+
+@media (max-width: 560px) {
+  .intake-actions { grid-template-columns: 1fr; }
+}
 
 .upload-drop input[type="file"] {
   position: absolute;
