@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Field Triage — Offline Diagnostic Assistant</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="app-shell">
+
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <div>
+          <h1>Field Triage</h1>
+          <p class="brand-sub">Offline diagnostic assistance for community health workers</p>
+        </div>
+      </div>
+      <div class="conn-status" id="connStatus">
+        <span class="dot" id="connDot"></span>
+        <span id="connLabel">Checking device…</span>
+      </div>
+    </header>
+
+    <main class="workspace">
+
+      <section class="panel intake-panel" aria-labelledby="intake-heading">
+        <h2 id="intake-heading">New assessment</h2>
+
+        <form id="triageForm">
+
+          <fieldset class="field-group">
+            <legend>Lesion photo</legend>
+            <label for="lesionImage" class="upload-drop" id="uploadDrop">
+              <input type="file" id="lesionImage" name="lesionImage" accept="image/*" required />
+              <div id="uploadPrompt">
+                <span class="upload-icon" aria-hidden="true">＋</span>
+                <span>Tap to add a photo of the skin lesion</span>
+                <span class="upload-hint">Hold steady, fill the frame, use natural light</span>
+              </div>
+              <img id="imagePreview" alt="Selected lesion preview" hidden />
+            </label>
+          </fieldset>
+
+          <fieldset class="field-group">
+            <legend>Respiratory symptoms</legend>
+
+            <label class="check-row">
+              <input type="checkbox" id="cough" name="cough" />
+              <span>Cough</span>
+            </label>
+
+            <label class="field-row" id="coughDaysRow" hidden>
+              <span>How many days has the cough lasted?</span>
+              <input type="number" id="coughDays" name="coughDays" min="0" max="120" value="0" />
+            </label>
+
+            <label class="check-row">
+              <input type="checkbox" id="fever" name="fever" />
+              <span>Fever</span>
+            </label>
+
+            <label class="field-row">
+              <span>Breathing difficulty</span>
+              <select id="breathingDifficulty" name="breathingDifficulty">
+                <option value="none">None</option>
+                <option value="mild">Mild</option>
+                <option value="severe">Severe</option>
+              </select>
+            </label>
+
+            <label class="check-row">
+              <input type="checkbox" id="chestIndrawing" name="chestIndrawing" />
+              <span>Chest indrawing observed</span>
+            </label>
+          </fieldset>
+
+          <button type="submit" class="run-button" id="runButton">
+            Run triage analysis
+          </button>
+        </form>
+      </section>
+
+      <section class="panel results-panel" aria-labelledby="results-heading" aria-live="polite">
+        <h2 id="results-heading">Result</h2>
+
+        <div id="resultEmpty" class="result-empty">
+          <p>Add a photo and symptoms, then run the analysis.</p>
+          <p class="result-empty-sub">Results appear here — nothing leaves this device.</p>
+        </div>
+
+        <div id="resultLoading" class="result-loading" hidden>
+          <div class="spinner" aria-hidden="true"></div>
+          <p>Running offline model…</p>
+        </div>
+
+        <div id="resultCard" class="result-card" hidden>
+          <div class="tier-badge" id="tierBadge">
+            <span id="tierLabel">—</span>
+          </div>
+          <dl class="result-detail">
+            <div>
+              <dt>Confidence</dt>
+              <dd id="confidenceValue">—</dd>
+            </div>
+            <div>
+              <dt>Image quality</dt>
+              <dd id="qualityValue">—</dd>
+            </div>
+          </dl>
+          <p class="result-reason" id="reasonText"></p>
+        </div>
+
+        <div id="resultError" class="result-error" hidden>
+          <p id="errorText"></p>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="app-footer">
+      <p>Prototype built for hackathon demo purposes. Not a certified medical device.</p>
+    </footer>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
