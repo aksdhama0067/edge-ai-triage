@@ -1,0 +1,26 @@
+patient_id,age,sex,skin_tone_fitzpatrick,cough_days,fever,breathing_difficulty,lesion_type,ground_truth_tier
+P001,34,F,III,0,False,none,Benign Keratosis,Green
+P002,58,M,II,12,True,mild,Melanoma,Red
+P003,7,M,V,3,True,severe,Benign Keratosis,Red
+P004,45,F,IV,0,False,none,Basal Cell Carcinoma,Yellow
+P005,61,M,II,0,False,none,Melanoma,Red
+P006,29,F,VI,5,False,none,Benign Keratosis,Green
+P007,52,M,III,16,True,none,Basal Cell Carcinoma,Yellow
+P008,3,F,IV,2,True,severe,Benign Keratosis,Red
+P009,67,M,I,0,False,none,Melanoma,Red
+P010,41,F,V,0,False,none,Benign Keratosis,Green
+P011,55,M,III,8,False,mild,Basal Cell Carcinoma,Yellow
+P012,22,F,II,0,False,none,Benign Keratosis,Green
+P013,73,M,IV,20,True,none,Basal Cell Carcinoma,Yellow
+P014,5,M,VI,1,True,mild,Benign Keratosis,Yellow
+P015,49,F,I,0,False,none,Melanoma,Red
+P016,38,M,III,0,False,none,Benign Keratosis,Green
+P017,64,F,II,4,False,none,Basal Cell Carcinoma,Yellow
+P018,2,M,V,6,True,severe,Benign Keratosis,Red
+P019,57,F,IV,0,False,none,Melanoma,Red
+P020,31,M,II,0,False,none,Benign Keratosis,Green
+P021,69,F,III,18,True,mild,Basal Cell Carcinoma,Red
+P022,26,M,VI,0,False,none,Benign Keratosis,Green
+P023,44,F,I,9,False,none,Basal Cell Carcinoma,Yellow
+P024,4,F,IV,3,True,severe,Benign Keratosis,Red
+P025,71,M,II,0,False,none,Melanoma,Red

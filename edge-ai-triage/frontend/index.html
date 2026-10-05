@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en" id="htmlRoot">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Edge AI Triage — Research Prototype</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <div class="app-shell">
+
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <div>
+          <h1>Edge AI Triage</h1>
+          <p class="brand-sub" data-i18n="tagline">AI-assisted health research tool — not a medical diagnosis</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="conn-status" id="connStatus">
+          <span class="dot" id="connDot"></span>
+          <span id="connLabel" data-i18n="checkingDevice">Checking device…</span>
+        </div>
+        <button type="button" class="chip-button" id="langToggle" aria-label="Switch language / भाषा बदलें">
+          🇮🇳 हिन्दी
+        </button>
+        <button type="button" class="chip-button" id="privacyButton" aria-haspopup="dialog" aria-controls="privacyPanel">
+          🔐 <span data-i18n="privacy">Privacy</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="disclaimer-banner" role="note">
+      <strong data-i18n="disclaimerStrong">Educational / research prototype.</strong>
+      <span data-i18n="disclaimerBody">This tool does not diagnose medical conditions. Always consider professional evaluation for health concerns.</span>
+    </div>
+
+    <main id="main" class="workspace-stack">
+
+      <!-- ============ INTAKE ============ -->
+      <section class="panel" aria-labelledby="intake-heading">
+        <h2 id="intake-heading" data-i18n="newAssessment">New assessment</h2>
+
+        <form id="triageForm">
+
+          <fieldset class="field-group">
+            <legend data-i18n="lesionPhoto">Lesion photo</legend>
+
+            <div class="upload-row">
+              <label for="lesionImage" class="upload-drop" id="uploadDrop">
+                <input type="file" id="lesionImage" name="lesionImage" accept="image/jpeg,image/png,image/webp,image/*" />
+                <div id="uploadPrompt">
+                  <span class="upload-icon" aria-hidden="true">＋</span>
+                  <span data-i18n="uploadPrompt">Tap to add a photo of the skin lesion</span>
+                  <span class="upload-hint" data-i18n="uploadHint">Hold steady, fill the frame, use natural light</span>
+                </div>
+                <img id="imagePreview" alt="Selected lesion preview" hidden />
+              </label>
+
+              <div class="intake-actions">
+                <button type="button" class="secondary-button" id="cameraButton">
+                  📷 <span data-i18n="takePhoto">Take a photo</span>
+                </button>
+                <button type="button" class="secondary-button" id="existingPhotoButton">
+                  🖼️ <span data-i18n="choosePhoto">Choose existing photo</span>
+                </button>
+              </div>
+              <button type="button" class="text-button" id="removePhotoButton" hidden data-i18n="removePhoto">✕ Remove image</button>
+            </div>
+
+            <label class="toggle-row">
+              <input type="checkbox" id="dataSaverToggle" />
+              <span data-i18n="dataSaver">Data Saver Mode</span>
+            </label>
+            <p class="upload-status" id="uploadStatus" aria-live="polite" data-i18n="uploadStatus">Choose an existing photo, drag one here, or paste an image with Ctrl+V.</p>
+            <p class="upload-error" id="uploadError" role="alert" hidden></p>
+            <p class="size-readout" id="sizeReadout" hidden></p>
+          </fieldset>
+
+          <fieldset class="field-group">
+            <legend data-i18n="respiratorySymptoms">Respiratory symptoms (optional)</legend>
+
+            <label class="check-row">
+              <input type="checkbox" id="cough" />
+              <span data-i18n="cough">Cough</span>
+            </label>
+            <label class="field-row" id="coughDaysRow" hidden>
+              <span data-i18n="coughDays">How many days has the cough lasted?</span>
+              <input type="number" id="coughDays" min="0" max="120" value="0" />
+            </label>
+            <label class="check-row">
+              <input type="checkbox" id="fever" />
+              <span data-i18n="fever">Fever</span>
+            </label>
+            <label class="field-row">
+              <span data-i18n="breathingDifficulty">Breathing difficulty</span>
+              <select id="breathingDifficulty">
+                <option value="none" data-i18n="none">None</option>
+                <option value="mild" data-i18n="mild">Mild</option>
+                <option value="severe" data-i18n="severe">Severe</option>
+              </select>
+            </label>
+            <label class="check-row">
+              <input type="checkbox" id="chestIndrawing" />
+              <span data-i18n="chestIndrawing">Chest indrawing observed</span>
+            </label>
+          </fieldset>
+
+          <fieldset class="field-group">
+            <legend data-i18n="lesionQuestionnaire">About this lesion</legend>
+
+            <label class="check-row">
+              <input type="checkbox" id="recentChange" />
+              <span data-i18n="recentChange">Has it changed recently?</span>
+            </label>
+            <label class="check-row">
+              <input type="checkbox" id="sizeChange" />
+              <span data-i18n="sizeChange">Has its size changed?</span>
+            </label>
+            <label class="check-row">
+              <input type="checkbox" id="appearanceChange" />
+              <span data-i18n="appearanceChange">Has its appearance changed?</span>
+            </label>
+            <label class="check-row">
+              <input type="checkbox" id="painful" />
+              <span data-i18n="painful">Is it painful?</span>
+            </label>
+            <label class="check-row">
+              <input type="checkbox" id="itchy" />
+              <span data-i18n="itchy">Is it itchy?</span>
+            </label>
+            <label class="check-row">
+              <input type="checkbox" id="bleeding" />
+              <span data-i18n="bleeding">Is there bleeding?</span>
+            </label>
+            <label class="field-row">
+              <span data-i18n="durationDays">How many days has it been present?</span>
+              <input type="number" id="durationDays" min="0" max="10000" value="0" />
+            </label>
+          </fieldset>
+
+          <button type="submit" class="run-button" id="runButton" data-i18n="runAnalysis">
+            Run triage analysis
+          </button>
+        </form>
+      </section>
+
+      <!-- ============ PROGRESS ============ -->
+      <section class="panel" id="progressPanel" aria-live="polite" hidden>
+        <ol class="progress-steps" id="progressSteps">
+          <li data-step="quality"><span class="step-dot"></span> <span data-i18n="stepQuality">Checking image quality…</span></li>
+          <li data-step="analyze"><span class="step-dot"></span> <span data-i18n="stepAnalyze">Analyzing…</span></li>
+          <li data-step="explain"><span class="step-dot"></span> <span data-i18n="stepExplain">Generating explanation…</span></li>
+          <li data-step="prepare"><span class="step-dot"></span> <span data-i18n="stepPrepare">Preparing result…</span></li>
+        </ol>
+      </section>
+
+      <!-- ============ RESULTS DASHBOARD ============ -->
+      <section class="results-dashboard" id="resultsDashboard" aria-live="polite" hidden>
+
+        <article class="result-card" id="qualityCard">
+          <h3 data-i18n="cardImageQuality">Image quality</h3>
+          <p class="badge-line"><span class="badge" id="qualityBadge">—</span></p>
+          <p id="qualityRecommendation"></p>
+        </article>
+
+        <article class="result-card" id="analysisCard">
+          <div class="card-header-row">
+            <h3 data-i18n="cardAiAnalysis">AI analysis</h3>
+            <button type="button" class="icon-button read-aloud" data-target="analysisReadText" aria-label="Read aloud">🔊</button>
+          </div>
+          <p id="analysisReadText">
+            <span data-i18n="category">Category</span>: <strong id="analysisCategory">—</strong><br />
+            <span data-i18n="confidence">Confidence</span>: <span id="analysisConfidence">—</span>
+          </p>
+          <p class="disclaimer-line" id="analysisDisclaimer"></p>
+          <button type="button" class="secondary-button" id="explainButton" data-i18n="showAttention">Show AI attention</button>
+          <div id="explainResult" class="explain-result" hidden>
+            <div class="explain-images">
+              <figure>
+                <img id="explainOriginal" alt="Original photo" />
+                <figcaption data-i18n="original">Original</figcaption>
+              </figure>
+              <figure>
+                <img id="explainHeatmap" alt="AI attention heatmap overlay" />
+                <figcaption data-i18n="aiAttention">AI attention</figcaption>
+              </figure>
+            </div>
+            <p class="disclaimer-line" data-i18n="gradcamDisclaimer">
+              The highlighted region shows areas that contributed to the model's prediction. This visualization does not prove that the highlighted region is medically abnormal.
+            </p>
+          </div>
+        </article>
+
+        <article class="result-card" id="similarityCard">
+          <h3 data-i18n="cardSimilar">Similar examples</h3>
+          <p id="similarityMessage"></p>
+          <div class="similarity-grid" id="similarityGrid"></div>
+          <p class="disclaimer-line" data-i18n="similarityDisclaimer">
+            Visual similarity does not indicate that two lesions have the same diagnosis.
+          </p>
+        </article>
+
+        <article class="result-card" id="triageCard">
+          <div class="card-header-row">
+            <h3 data-i18n="cardTriage">Triage</h3>
+            <button type="button" class="icon-button read-aloud" data-target="triageReadText" aria-label="Read aloud">🔊</button>
+          </div>
+          <p class="badge-line"><span class="badge" id="tierBadge">—</span></p>
+          <p id="triageReadText"></p>
+          <details class="why-details">
+            <summary data-i18n="whyThisResult">Why this result?</summary>
+            <ul id="triageFactors"></ul>
+          </details>
+        </article>
+
+        <article class="result-card" id="limitationsCard">
+          <h3 data-i18n="cardLimitations">Limitations</h3>
+          <ul id="limitationsList" class="limitations-list"></ul>
+        </article>
+
+      </section>
+
+      <!-- ============ ASSISTANT ============ -->
+      <section class="panel" aria-labelledby="assistant-heading">
+        <h2 id="assistant-heading">🤖 <span data-i18n="askAssistant">Ask about this result</span></h2>
+        <div class="assistant-chips" id="assistantChips"></div>
+        <form id="assistantForm" class="assistant-form">
+          <label for="assistantInput" class="sr-only" data-i18n="assistantInputLabel">Ask a question about this tool</label>
+          <input type="text" id="assistantInput" data-i18n-placeholder="assistantPlaceholder" placeholder="Ask a question about this tool…" />
+          <button type="submit" data-i18n="send">Send</button>
+        </form>
+        <div id="assistantAnswer" class="assistant-answer" hidden>
+          <div class="card-header-row">
+            <p id="assistantAnswerText"></p>
+            <button type="button" class="icon-button read-aloud" data-target="assistantAnswerText" aria-label="Read aloud">🔊</button>
+          </div>
+          <p class="disclaimer-line" id="assistantProviderNote"></p>
+        </div>
+      </section>
+
+      <!-- ============ LEARN ============ -->
+      <section class="panel" aria-labelledby="learn-heading">
+        <h2 id="learn-heading" data-i18n="learnHeading">Learn</h2>
+
+        <details>
+          <summary data-i18n="learnQ1">What are skin lesions?</summary>
+          <p data-i18n="learnA1">A lesion is any area of skin that looks different from the skin around it — a mole, spot, growth, or patch. Most lesions are harmless, but changes over time are worth having looked at.</p>
+        </details>
+        <details>
+          <summary data-i18n="learnQ2">Benign vs. suspicious categories</summary>
+          <p data-i18n="learnA2">"Benign" broadly means not cancerous. "Suspicious" categories are patterns that are sometimes associated with skin cancers and usually warrant a closer professional look — they are not themselves a diagnosis.</p>
+        </details>
+        <details>
+          <summary data-i18n="learnQ3">What can this AI actually do?</summary>
+          <p data-i18n="learnA3">It can check whether a photo is usable, sort a photo into broad visual categories, show which pixels influenced that sort, and look for visually similar reference examples. It cannot examine skin the way a clinician can, and it has not been validated for clinical use.</p>
+        </details>
+        <details>
+          <summary data-i18n="learnQ4">What can't it do?</summary>
+          <p data-i18n="learnA4">It cannot diagnose, cannot rule anything out, cannot feel a lesion's texture, and — unless explicitly stated as "trained" and even then, "clinically validated" — its predictions are illustrative rather than medically meaningful.</p>
+        </details>
+        <details>
+          <summary data-i18n="learnQ5">How to take a better photo</summary>
+          <p data-i18n="learnA5">Use natural daylight if possible, hold the camera steady, fill the frame with the area of interest, and avoid direct flash glare.</p>
+        </details>
+      </section>
+
+    </main>
+
+    <footer class="app-footer">
+      <p data-i18n="footerNote">Prototype for research/educational demonstration purposes. Not a certified medical device.</p>
+    </footer>
+  </div>
+
+  <!-- ============ PRIVACY PANEL ============ -->
+  <div class="modal-overlay" id="privacyOverlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="privacyTitle" id="privacyPanel">
+      <h2 id="privacyTitle" data-i18n="privacyTitle">Privacy</h2>
+      <p data-i18n="privacyBody1">Images and answers you submit are processed temporarily, in memory, to generate a result. They are not written to disk or saved by this application, and this page does not use tracking cookies or analytics.</p>
+      <p data-i18n="privacyBody2">If you've enabled the optional external AI assistant (via an environment variable your operator sets), your assistant questions — not your image — may be sent to that external service. The local assistant mode sends nothing anywhere.</p>
+      <button type="button" class="secondary-button" id="resetButton" data-i18n="resetAnalysis">Delete / reset this analysis</button>
+      <button type="button" class="run-button" id="closePrivacy" data-i18n="close">Close</button>
+    </div>
+  </div>
+
+  <!-- ============ CAMERA MODAL ============ -->
+  <div class="modal-overlay" id="cameraOverlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cameraTitle">
+      <h2 id="cameraTitle" data-i18n="takePhoto">Take a photo</h2>
+      <video id="cameraVideo" autoplay playsinline></video>
+      <canvas id="cameraCanvas" hidden></canvas>
+      <img id="cameraCaptured" alt="Captured preview" hidden />
+      <p id="cameraError" class="disclaimer-line" hidden></p>
+      <div class="modal-actions">
+        <button type="button" class="secondary-button" id="cameraCaptureBtn" data-i18n="capture">Capture</button>
+        <button type="button" class="secondary-button" id="cameraRetakeBtn" hidden data-i18n="retake">Retake</button>
+        <button type="button" class="run-button" id="cameraUseBtn" hidden data-i18n="usePhoto">Use photo</button>
+        <button type="button" class="secondary-button" id="cameraFallbackBtn" data-i18n="choosePhoto">Choose existing photo</button>
+        <button type="button" class="secondary-button" id="cameraCancelBtn" data-i18n="cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/i18n.js"></script>
+  <script src="/static/app.js?v=0.2.4"></script>
+</body>
+</html>

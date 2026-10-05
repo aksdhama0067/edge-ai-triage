@@ -1,0 +1,13 @@
+**/.venv/
+**/__pycache__/
+*.pyc
+.env
+
+# Large ISIC dataset
+edge-ai-triage/data/raw/ISIC2018_Task3_Training_Input/
+edge-ai-triage/data/raw/ISIC2018_Task3_Training_GroundTruth/
+
+**/__pycache__/
+
+# Raw ISIC dataset archives
+edge-ai-triage/data/raw/*.zip
