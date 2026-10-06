@@ -51,7 +51,7 @@
 
             <div class="upload-row">
               <label for="lesionImage" class="upload-drop" id="uploadDrop">
-                <input type="file" id="lesionImage" name="lesionImage" accept="image/*" />
+                <input type="file" id="lesionImage" name="lesionImage" accept="image/jpeg,image/png,image/webp,image/*" />
                 <div id="uploadPrompt">
                   <span class="upload-icon" aria-hidden="true">＋</span>
                   <span data-i18n="uploadPrompt">Tap to add a photo of the skin lesion</span>
@@ -60,15 +60,23 @@
                 <img id="imagePreview" alt="Selected lesion preview" hidden />
               </label>
 
-              <button type="button" class="secondary-button" id="cameraButton">
-                📷 <span data-i18n="takePhoto">Take a photo</span>
-              </button>
+              <div class="intake-actions">
+                <button type="button" class="secondary-button" id="cameraButton">
+                  📷 <span data-i18n="takePhoto">Take a photo</span>
+                </button>
+                <button type="button" class="secondary-button" id="existingPhotoButton">
+                  🖼️ <span data-i18n="choosePhoto">Choose existing photo</span>
+                </button>
+              </div>
+              <button type="button" class="text-button" id="removePhotoButton" hidden data-i18n="removePhoto">✕ Remove image</button>
             </div>
 
             <label class="toggle-row">
               <input type="checkbox" id="dataSaverToggle" />
               <span data-i18n="dataSaver">Data Saver Mode</span>
             </label>
+            <p class="upload-status" id="uploadStatus" aria-live="polite" data-i18n="uploadStatus">Choose an existing photo, drag one here, or paste an image with Ctrl+V.</p>
+            <p class="upload-error" id="uploadError" role="alert" hidden></p>
             <p class="size-readout" id="sizeReadout" hidden></p>
           </fieldset>
 
@@ -290,12 +298,13 @@
         <button type="button" class="secondary-button" id="cameraCaptureBtn" data-i18n="capture">Capture</button>
         <button type="button" class="secondary-button" id="cameraRetakeBtn" hidden data-i18n="retake">Retake</button>
         <button type="button" class="run-button" id="cameraUseBtn" hidden data-i18n="usePhoto">Use photo</button>
+        <button type="button" class="secondary-button" id="cameraFallbackBtn" data-i18n="choosePhoto">Choose existing photo</button>
         <button type="button" class="secondary-button" id="cameraCancelBtn" data-i18n="cancel">Cancel</button>
       </div>
     </div>
   </div>
 
   <script src="/static/i18n.js"></script>
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=0.2.4"></script>
 </body>
 </html>

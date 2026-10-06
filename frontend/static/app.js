@@ -8,17 +8,37 @@
 
 const API_BASE = window.location.origin;
 
-// Holds the current working image as a Blob, independent of whether it came
-// from the file input or the camera, plus the extension to send it as.
+// ---------------------------------------------------------------------------
+// Image state
+// ---------------------------------------------------------------------------
+// There is exactly ONE normalized representation of "the current image",
+// regardless of whether it came from the camera, the file picker, a drag-
+// drop, or a paste: a Blob. Both intake paths funnel into setCurrentImage().
+//
+//   originalImageBlob  - the untouched source Blob/File, exactly as captured
+//                         or selected. Data Saver compression is always
+//                         derived FROM this, never from a previously
+//                         compressed result, so toggling Data Saver on/off
+//                         repeatedly never progressively re-compresses.
+//   currentImageBlob    - what actually gets uploaded: either
+//                         originalImageBlob itself (Data Saver off) or a
+//                         freshly compressed derivative of it (Data Saver
+//                         on).
+//   currentPreviewUrl   - the single object URL currently backing
+//                         #imagePreview's src, tracked so it can be revoked
+//                         exactly once, exactly when it's safe to do so.
+let originalImageBlob = null;
 let currentImageBlob = null;
 let currentImageOriginalBytes = 0;
+let currentPreviewUrl = null;
 let lastTriageContext = null; // small summary sent to the assistant for context
 
 const el = (id) => document.getElementById(id);
 
 const ids = [
-  "lesionImage", "uploadPrompt", "imagePreview", "cameraButton",
-  "dataSaverToggle", "sizeReadout",
+  "lesionImage", "uploadPrompt", "imagePreview", "cameraButton", "existingPhotoButton",
+  "removePhotoButton", "uploadError",
+  "uploadDrop", "uploadStatus", "dataSaverToggle", "sizeReadout",
   "cough", "coughDaysRow", "coughDays", "fever", "breathingDifficulty", "chestIndrawing",
   "recentChange", "sizeChange", "appearanceChange", "painful", "itchy", "bleeding", "durationDays",
   "triageForm", "runButton",
@@ -33,7 +53,7 @@ const ids = [
   "assistantChips", "assistantForm", "assistantInput", "assistantAnswer", "assistantAnswerText", "assistantProviderNote",
   "privacyButton", "privacyOverlay", "closePrivacy", "resetButton",
   "cameraOverlay", "cameraVideo", "cameraCanvas", "cameraCaptured", "cameraError",
-  "cameraCaptureBtn", "cameraRetakeBtn", "cameraUseBtn", "cameraCancelBtn",
+  "cameraCaptureBtn", "cameraRetakeBtn", "cameraUseBtn", "cameraFallbackBtn", "cameraCancelBtn",
   "connDot", "connLabel", "langToggle",
 ];
 const E = {};
@@ -65,10 +85,11 @@ E.resetButton.addEventListener("click", () => {
 });
 
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") {
-    E.privacyOverlay.hidden = true;
-    if (!E.cameraOverlay.hidden) closeCamera();
-  }
+  if (e.key !== "Escape") return;
+  // There is no separate "photo picker" modal in this app (the native file
+  // input is opened directly) - only these two overlays actually exist.
+  if (!E.privacyOverlay.hidden) E.privacyOverlay.hidden = true;
+  if (!E.cameraOverlay.hidden) closeCamera();
 });
 
 // ---------------------------------------------------------------------------
@@ -92,19 +113,44 @@ async function checkHealth() {
 // Image intake: file upload, preview, data-saver compression
 // ---------------------------------------------------------------------------
 
+// The backend validates uploaded images by real content-type and decoded
+// bytes, never by filename - so this is purely cosmetic/debuggable, not a
+// functional requirement. Still worth getting right rather than always
+// claiming ".jpg" for a PNG/WebP blob.
+function imageFilename(blob) {
+  const ext = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" }[blob.type] || "jpg";
+  return `lesion.${ext}`;
+}
+
 function formatBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
-function setPreview(blob) {
-  const url = URL.createObjectURL(blob);
-  E.imagePreview.src = url;
-  E.imagePreview.hidden = false;
-  E.uploadPrompt.hidden = true;
+function revokeCurrentPreviewUrl() {
+  if (currentPreviewUrl) {
+    URL.revokeObjectURL(currentPreviewUrl);
+    currentPreviewUrl = null;
+  }
 }
 
+function setPreview(blob) {
+  // Create and attach the new URL BEFORE revoking the old one, so the <img>
+  // is never pointed at a dead URL even for an instant, then revoke the
+  // previous URL now that nothing references it any more.
+  const newUrl = URL.createObjectURL(blob);
+  E.imagePreview.src = newUrl;
+  E.imagePreview.hidden = false;
+  E.uploadPrompt.hidden = true;
+  E.removePhotoButton.hidden = false;
+  revokeCurrentPreviewUrl();
+  currentPreviewUrl = newUrl;
+}
+
+// Data Saver always compresses FROM the untouched original, never from a
+// previously-compressed result - so toggling it on/off/on never stacks
+// compression passes or loses track of the true original size.
 async function compressIfNeeded(blob) {
   if (!E.dataSaverToggle.checked) {
     E.sizeReadout.hidden = true;
@@ -119,6 +165,7 @@ async function compressIfNeeded(blob) {
   canvas.height = Math.round(bitmap.height * scale);
   const ctx = canvas.getContext("2d");
   ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  if (bitmap.close) bitmap.close();
 
   const compressedBlob = await new Promise((resolve) =>
     canvas.toBlob(resolve, "image/jpeg", 0.72)
@@ -132,22 +179,153 @@ async function compressIfNeeded(blob) {
   return finalBlob;
 }
 
-async function setCurrentImage(blob) {
-  currentImageOriginalBytes = blob.size;
-  const processed = await compressIfNeeded(blob);
-  currentImageBlob = processed;
-  setPreview(processed);
+// The single entry point every intake path (camera, file picker, drag-drop,
+// paste) funnels through. `sourceBlob` must always be the TRUE original -
+// callers never pass a previously-compressed blob back in here.
+async function setCurrentImage(sourceBlob) {
+  if (!sourceBlob) return false;
+  originalImageBlob = sourceBlob;
+  try {
+    currentImageOriginalBytes = sourceBlob.size;
+    const processed = await compressIfNeeded(sourceBlob);
+    currentImageBlob = processed;
+    setPreview(processed);
+    return true;
+  } catch (err) {
+    console.error("Unable to process image (compression step):", err);
+    // Compression is an optional optimization - if it fails for any reason,
+    // the original file is still perfectly usable. Fall back to it rather
+    // than blocking the user.
+    currentImageBlob = sourceBlob;
+    setPreview(sourceBlob);
+    E.sizeReadout.hidden = true;
+    return true;
+  }
+}
+
+function showUploadError(message) {
+  E.uploadError.textContent = message;
+  E.uploadError.hidden = false;
+}
+
+function clearUploadError() {
+  E.uploadError.hidden = true;
+  E.uploadError.textContent = "";
+}
+
+function describeFileType(file) {
+  if (file.type) return file.type;
+  const name = (file.name || "").toLowerCase();
+  const ext = name.includes(".") && name.split(".").pop();
+  return ext ? `.${ext} file with no reported type` : "unknown file type";
+}
+
+// Clears only the image: not the questionnaire, not prior results, not the
+// Privacy modal. Available from both the storage flow and the camera flow.
+function clearSelectedImage() {
+  revokeCurrentPreviewUrl();
+  originalImageBlob = null;
+  currentImageBlob = null;
+  currentImageOriginalBytes = 0;
+  E.lesionImage.value = "";
+  E.imagePreview.hidden = true;
+  E.imagePreview.src = "";
+  E.uploadPrompt.hidden = false;
+  E.removePhotoButton.hidden = true;
+  E.sizeReadout.hidden = true;
+  E.uploadStatus.textContent = t("uploadStatus");
+  clearUploadError();
+}
+
+E.removePhotoButton.addEventListener("click", clearSelectedImage);
+
+async function useExistingImage(file, source = "file") {
+  if (!file) return;
+  clearUploadError();
+
+  // Authoritative validation: actually attempt to decode the file as an
+  // image rather than trusting file.type (which Windows in particular can
+  // report as empty or generic for otherwise-valid photos) or the file
+  // extension (which a renamed non-image file could fake). A successful
+  // decode is the real proof this is a usable image.
+  let probeBitmap;
+  try {
+    probeBitmap = await createImageBitmap(file);
+  } catch (err) {
+    const claimedImage = (file.type && file.type.startsWith("image/")) ||
+      /\.(jpe?g|png|webp|gif|bmp)$/i.test(file.name || "");
+    showUploadError(
+      claimedImage
+        ? t("corruptImageFile")
+        : `${t("invalidImageFile")} (${describeFileType(file)})`
+    );
+    return;
+  }
+  if (probeBitmap.close) probeBitmap.close();
+
+  const ok = await setCurrentImage(file);
+  if (ok) {
+    E.uploadStatus.textContent = source === "paste" ? t("pastedPhoto") : t("photoSelected");
+  }
 }
 
 E.lesionImage.addEventListener("change", async () => {
   const file = E.lesionImage.files && E.lesionImage.files[0];
   if (!file) return;
-  await setCurrentImage(file);
+  await useExistingImage(file);
+});
+
+// Reset the input's value right before the native picker can possibly open,
+// regardless of whether that happens via the <label> itself being clicked
+// or via the "Choose existing photo" button calling .click() below. Without
+// this, re-selecting the exact same file does not reliably re-fire `change`
+// in Chrome/Edge/Firefox, which looks exactly like the picker "doing
+// nothing" on a second attempt.
+E.lesionImage.addEventListener("click", () => {
+  E.lesionImage.value = "";
+});
+
+function openPhotoPicker() {
+  // Use the native file picker directly. This avoids a second modal layer and
+  // makes the same path work for existing photos, screenshots, and saved captures.
+  E.lesionImage.click();
+}
+
+E.existingPhotoButton.addEventListener("click", openPhotoPicker);
+
+// Drag-and-drop fallback for desktop browsers.
+["dragenter", "dragover"].forEach((eventName) => {
+  E.uploadDrop.addEventListener(eventName, (event) => {
+    event.preventDefault();
+    E.uploadDrop.classList.add("drag-active");
+  });
+});
+["dragleave", "drop"].forEach((eventName) => {
+  E.uploadDrop.addEventListener(eventName, (event) => {
+    event.preventDefault();
+    E.uploadDrop.classList.remove("drag-active");
+  });
+});
+E.uploadDrop.addEventListener("drop", async (event) => {
+  const file = event.dataTransfer?.files?.[0];
+  if (file) await useExistingImage(file, "drop");
+});
+
+// Paste a copied screenshot/photo directly into the app.
+document.addEventListener("paste", async (event) => {
+  const items = Array.from(event.clipboardData?.items || []);
+  const imageItem = items.find((item) => item.type.startsWith("image/"));
+  if (!imageItem) return;
+  const file = imageItem.getAsFile();
+  if (file) await useExistingImage(file, "paste");
 });
 
 E.dataSaverToggle.addEventListener("change", async () => {
-  if (currentImageBlob) {
-    await setCurrentImage(currentImageBlob);
+  // Re-derive from the untouched original every time, never from
+  // currentImageBlob (which may already be a compressed derivative) - this
+  // is what prevents ON -> OFF -> ON from stacking compression passes.
+  if (originalImageBlob) {
+    await setCurrentImage(originalImageBlob);
   }
 });
 
@@ -172,22 +350,27 @@ async function openCamera() {
   E.cameraUseBtn.hidden = true;
 
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    E.cameraError.textContent = t("cameraUnavailable");
-    E.cameraError.hidden = false;
-    E.cameraCaptureBtn.hidden = true;
+    showCameraError();
     return;
   }
 
   try {
     cameraStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "environment" },
+      video: { facingMode: { ideal: "environment" } },
+      audio: false,
     });
     E.cameraVideo.srcObject = cameraStream;
+    await E.cameraVideo.play();
   } catch (err) {
-    E.cameraError.textContent = t("cameraUnavailable");
-    E.cameraError.hidden = false;
-    E.cameraCaptureBtn.hidden = true;
+    console.warn("Camera unavailable:", err);
+    showCameraError();
   }
+}
+
+function showCameraError() {
+  E.cameraError.textContent = `${t("cameraUnavailable")} You can choose an existing photo instead.`;
+  E.cameraError.hidden = false;
+  E.cameraCaptureBtn.hidden = true;
 }
 
 function stopCameraStream() {
@@ -204,13 +387,27 @@ function closeCamera() {
 
 E.cameraButton.addEventListener("click", openCamera);
 E.cameraCancelBtn.addEventListener("click", closeCamera);
+E.cameraFallbackBtn.addEventListener("click", () => {
+  closeCamera();
+  openPhotoPicker();
+});
 
 E.cameraCaptureBtn.addEventListener("click", () => {
   const video = E.cameraVideo;
   const canvas = E.cameraCanvas;
+
+  if (!video.videoWidth || !video.videoHeight) {
+    E.cameraError.textContent = "The camera is not ready yet. Wait a moment and try again, or choose an existing photo.";
+    E.cameraError.hidden = false;
+    return;
+  }
+
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
-  canvas.getContext("2d").drawImage(video, 0, 0);
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
   E.cameraCaptured.src = canvas.toDataURL("image/jpeg", 0.9);
   E.cameraCaptured.hidden = false;
   E.cameraVideo.hidden = true;
@@ -229,7 +426,17 @@ E.cameraRetakeBtn.addEventListener("click", () => {
 
 E.cameraUseBtn.addEventListener("click", () => {
   E.cameraCanvas.toBlob(async (blob) => {
-    if (blob) await setCurrentImage(blob);
+    if (!blob) {
+      E.cameraError.textContent = "Could not create the captured image. Please retake it or choose an existing photo.";
+      E.cameraError.hidden = false;
+      return;
+    }
+    // A canvas-generated JPEG from a live video frame is guaranteed
+    // decodable, so it goes straight into the same normalized intake point
+    // storage images use (setCurrentImage) - one representation, two sources.
+    clearUploadError();
+    await setCurrentImage(blob);
+    E.uploadStatus.textContent = t("photoSelected");
     closeCamera();
   }, "image/jpeg", 0.9);
 });
@@ -371,7 +578,7 @@ E.triageForm.addEventListener("submit", async (event) => {
     const questionnaire = collectQuestionnaire();
 
     const formData = new FormData();
-    formData.append("image", currentImageBlob, "lesion.jpg");
+    formData.append("image", currentImageBlob, imageFilename(currentImageBlob));
     formData.append("symptoms", JSON.stringify(symptoms));
     formData.append("questionnaire", JSON.stringify(questionnaire));
 
@@ -391,7 +598,7 @@ E.triageForm.addEventListener("submit", async (event) => {
     // Similarity is cheap enough to fetch eagerly; Grad-CAM is fetched lazily
     // on demand (see explainButton) since it runs an extra backward pass.
     const similarityFormData = new FormData();
-    similarityFormData.append("image", currentImageBlob, "lesion.jpg");
+    similarityFormData.append("image", currentImageBlob, imageFilename(currentImageBlob));
     const similarityResponse = await fetch(`${API_BASE}/api/similarity`, {
       method: "POST",
       body: similarityFormData,
@@ -448,7 +655,7 @@ E.explainButton.addEventListener("click", async () => {
   E.explainButton.disabled = true;
   try {
     const formData = new FormData();
-    formData.append("image", currentImageBlob, "lesion.jpg");
+    formData.append("image", currentImageBlob, imageFilename(currentImageBlob));
     const response = await fetch(`${API_BASE}/api/explain`, { method: "POST", body: formData });
     const result = await response.json();
 
@@ -551,14 +758,11 @@ document.querySelectorAll(".read-aloud").forEach((button) => {
 // ---------------------------------------------------------------------------
 
 function resetAnalysis() {
-  currentImageBlob = null;
-  currentImageOriginalBytes = 0;
+  // Image-specific cleanup (revoke URL, clear state, reset input, hide
+  // preview/remove button) is identical to the targeted "Remove image"
+  // action, so it's defined once and reused here rather than duplicated.
+  clearSelectedImage();
   lastTriageContext = null;
-  E.lesionImage.value = "";
-  E.imagePreview.hidden = true;
-  E.imagePreview.src = "";
-  E.uploadPrompt.hidden = false;
-  E.sizeReadout.hidden = true;
   E.resultsDashboard.hidden = true;
   E.explainResult.hidden = true;
   E.assistantAnswer.hidden = true;

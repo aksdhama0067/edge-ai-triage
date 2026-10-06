@@ -21,6 +21,23 @@
   box-sizing: border-box;
 }
 
+/*
+ * Safety net: the browser's default stylesheet hides [hidden] elements via
+ * `display: none`, but that is a user-agent-origin rule, so ANY author rule
+ * that sets `display` on the same element (e.g. `.modal-overlay{display:
+ * flex}`, `.results-dashboard{display:grid}`) silently wins and the element
+ * stays visible even though its `hidden` attribute/property is true. This
+ * bit every element here that is toggled via `el.hidden = true/false` in
+ * app.js (camera modal, privacy modal, results dashboard, etc.) and is a
+ * well-documented CSS gotcha, not a JS logic bug - the state was always
+ * correct, it just never rendered. This single global rule guarantees
+ * `hidden` always wins, for every current and future element, with no
+ * per-component overrides to remember.
+ */
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   background: var(--paper);
@@ -243,7 +260,51 @@ body {
   position: relative;
 }
 
-.upload-drop:hover { border-color: var(--teal); }
+.upload-drop:hover, .upload-drop.drag-active { border-color: var(--teal); }
+
+.intake-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.upload-status {
+  margin: 8px 0 0;
+  font-size: 0.82rem;
+  color: #66756f;
+  text-align: center;
+}
+
+.upload-error {
+  margin: 8px 0 0;
+  font-size: 0.85rem;
+  color: var(--red);
+  background: var(--red-soft);
+  border: 1px solid var(--red);
+  border-radius: var(--radius-control);
+  padding: 8px 12px;
+}
+
+.text-button {
+  align-self: center;
+  margin-top: 2px;
+  background: none;
+  border: none;
+  color: var(--red);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.text-button:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 560px) {
+  .intake-actions { grid-template-columns: 1fr; }
+}
 
 .upload-drop input[type="file"] {
   position: absolute;
@@ -613,6 +674,7 @@ details p {
   max-height: 60vh;
   object-fit: contain;
 }
+
 
 .modal-actions {
   display: flex;
