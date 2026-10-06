@@ -1,0 +1,43 @@
+ISIC 2018 BASELINE MODEL EVALUATION
+====================================
+
+Model: C:\Users\HP\Downloads\edge-ai-triage (3)\edge-ai-triage\models\isic_resnet18_test.pth
+Validation images: 2003
+
+Overall metrics
+----------------
+Accuracy:        0.7104
+Macro Precision: 0.5717
+Macro Recall:    0.6623
+Macro F1:        0.5892
+Weighted F1:     0.7336
+
+Classification report
+--------------------
+              precision    recall  f1-score   support
+
+       AKIEC       0.29      0.68      0.40        65
+         BCC       0.75      0.52      0.62       103
+         BKL       0.51      0.54      0.52       220
+          DF       0.38      0.78      0.51        23
+         MEL       0.36      0.55      0.43       223
+          NV       0.92      0.78      0.85      1341
+        VASC       0.79      0.79      0.79        28
+
+    accuracy                           0.71      2003
+   macro avg       0.57      0.66      0.59      2003
+weighted avg       0.78      0.71      0.73      2003
+
+Confusion matrix
+----------------
+Rows = actual class
+Columns = predicted class
+
+                 AKIEC     BCC     BKL      DF     MEL      NV    VASC
+   AKIEC       44       2      13       2       2       2       0
+     BCC       27      54       5       2       5      10       0
+     BKL       32       6     118       3      36      25       0
+      DF        2       0       1      18       0       2       0
+     MEL       32       0      23       2     123      43       0
+      NV       16       9      68      20     178    1044       6
+    VASC        0       1       2       0       0       3      22
